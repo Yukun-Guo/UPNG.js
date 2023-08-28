@@ -1,5 +1,5 @@
 {
-  "name": "upng-js",
+  "name": "upng",
   "description": "Small, fast and advanced PNG / APNG encoder and decoder",
   "version": "2.2.0",
   "homepage": "https://github.com/photopea/UPNG.js",
@@ -8,7 +8,10 @@
     "Scimonster (https://github.com/Scimonster)"
   ],
   "license": "MIT",
-  "repository": "github:photopea/UPNG.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/photopea/UPNG.js.git"
+  },
   "bugs": {
     "url": "https://github.com/photopea/UPNG.js/issues"
   },
@@ -20,6 +23,11 @@
     "conversion"
   ],
   "dependencies": {
-    "pako": "^1.0.5"
+    "pako": "^1.0.5",
+    "pngjs": "^7.0.0",
+    "upng-js": "^2.1.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
   }
 }
