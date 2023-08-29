@@ -1,4 +1,6 @@
 import pako from 'pako';
+import fs from 'fs';
+import  {PNG} from 'pngjs'; 
 
 let crcLib = {
     table: (function () {
@@ -476,8 +478,7 @@ function encode(buffers: any, w: number, h: number, palette: any, ps?: number, d
 //     encode
 // }
 
-import fs from 'fs';
-import  {PNG} from 'pngjs';
+
 // const UPNG = require('./index');
 // const UPNG = require('upng-js');
 // import {encoder} from "./pngEncoder"
