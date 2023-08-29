@@ -1,12 +1,18 @@
 # UPNG.js
 A small, fast and advanced PNG / APNG encoder and decoder. It is the main PNG engine for [Photopea image editor](https://www.photopea.com).
 
+
 * [Examples of PNGs minified by UPNG.js](https://blog.photopea.com/png-minifier-inside-photopea.html#examples)
 * [Try UPNG.js in Photopea](https://www.photopea.com) - open an image and press File - Save for web, play with the Quality
 * [UPNG.Photopea.com](http://upng.photopea.com) - a separate minifier app, that uses UPNG.js
 * Support us by [making a donation](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=ivan%40kuckir%2ecom&lc=CZ&item_name=UPNG%2ejs&currency_code=USD&bn=PP%2dDonationsBF%3abtn_donateCC_LG%2egif%3aNonHosted).
 
 Download and include the `UPNG.js` file in your code.
+
+## Difference with Orignal repository
+
+* `UPNG.encoder` now accept user `palette`.
+* `UPNG.encode(imgs, w, h, palette, cnum, [dels])`
 
 ## Encoder
 
@@ -89,3 +95,4 @@ The result object "res" has following properties:
 - To get one common palette for multiple images (e.g. frames of the animation), concatenate them into one array `data`.
 - When working with less than four components, set the remaining components to a constant value (e.g. to zero)
 - When working with transparency, premultiply color components by transparency (otherwise, rgba(1,1,1,0) would be closer to rgba(1,1,1,1) than to rgba(0,0,0,0) - transparent mapped to white instead of transparent)
+
