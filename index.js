@@ -1335,7 +1335,7 @@ var UPNG = (function () {
 		wUi(data, offset, crc(data, offset - 4, 4));
 		offset += 4; // crc
 
-		return data.buffer;
+		return data;
 	}
 
 	function compressPNG(out, filter, levelZero) {

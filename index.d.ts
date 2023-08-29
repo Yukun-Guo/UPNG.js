@@ -47,7 +47,7 @@ export interface Image {
     ctype: number;
     frames: ImageFrame[];
     tabs: ImageTabs;
-    data: ArrayBuffer;
+    data: Uint8Array;
 }
 
 export interface QuantizeResult {
@@ -64,7 +64,7 @@ export function encode(
     plte: number[number[]] | null,
     cnum?: number,
     dels?: number[]
-): ArrayBuffer;
+): Uint8Array;
 
 export function encodeLL(
     imgs: ArrayBuffer[],
@@ -74,7 +74,7 @@ export function encodeLL(
     ac: number,
     depth: number,
     dels?: number[]
-): ArrayBuffer;
+): Uint8Array;
 
 export function decode(buffer: ArrayBuffer): Image;
 

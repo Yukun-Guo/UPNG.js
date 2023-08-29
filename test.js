@@ -39,4 +39,4 @@ let png = UPNG.decode(data);
 let pngJS = PNG.sync.read(data);
 
 let encoded = UPNG.encode([Uint8Array.from(pngJS.data).buffer], pngJS.width, pngJS.height,pngJS.palette);
-fs.writeFileSync("wfdr2.png", new Uint8Array(encoded));
+fs.writeFileSync("wfdr2.png", encoded);
