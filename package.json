@@ -29,5 +29,9 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "devDependencies": {
+    "@types/pako": "^2.0.0",
+    "@types/pngjs": "^6.0.1"
   }
 }
