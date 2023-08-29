@@ -1352,7 +1352,7 @@ var UPNG = (function () {
 
 
 
-	function compress(bufs, w, h, ps, prms) // prms:  onlyBlend, minBits, forbidPlte
+	function compress(bufs, w, h, palette, ps, prms) // prms:  onlyBlend, minBits, forbidPlte
 	{
 		//var time = Date.now();
 		var onlyBlend = prms[0],
@@ -1382,6 +1382,12 @@ var UPNG = (function () {
 		var cmap = {},
 			plte = [],
 			inds = [];
+		
+		if (palette !== null) {
+			for(let i = 0; i < palette.length; i++) {
+				plte.push(new Uint32Array(palette[i])[0]);
+			}
+		}
 
 		if (ps != 0) {
 			var nbufs = [];
@@ -1410,30 +1416,34 @@ var UPNG = (function () {
 
 			//console.log("quantize", Date.now()-time);  time = Date.now();
 		} else {
-			// what if ps==0, but there are <=256 colors?  we still need to detect, if the palette could be used
-			for (var j = 0; j < frms.length; j++) { // when not quantized, other frames can contain colors, that are not in an initial frame
-				var frm = frms[j],
-					img32 = new Uint32Array(frm.img.buffer),
-					nw = frm.rect.width,
-					ilen = img32.length;
-				var ind = new Uint8Array(ilen);
-				inds.push(ind);
-				for (var i = 0; i < ilen; i++) {
-					var c = img32[i];
-					if (i != 0 && c == img32[i - 1]) ind[i] = ind[i - 1];
-					else if (i > nw && c == img32[i - nw]) ind[i] = ind[i - nw];
-					else {
-						var cmc = cmap[c];
-						if (cmc == null) {
-							cmap[c] = cmc = plte.length;
-							plte.push(c);
-							if (plte.length >= 300) break;
+			if (frms.length>1){
+				// what if ps==0, but there are <=256 colors?  we still need to detect, if the palette could be used
+				for (var j = 0; j < frms.length; j++) { // when not quantized, other frames can contain colors, that are not in an initial frame
+					var frm = frms[j],
+						img32 = new Uint32Array(frm.img.buffer),
+						nw = frm.rect.width,
+						ilen = img32.length;
+					var ind = new Uint8Array(ilen);
+					inds.push(ind);
+					// calc palette and reduce colors, if the palette is assigned by the user skip it
+					for (var i = 0; i < ilen; i++) {
+						var c = img32[i];
+						if (i != 0 && c == img32[i - 1]) ind[i] = ind[i - 1];
+						else if (i > nw && c == img32[i - nw]) ind[i] = ind[i - nw];
+						else {
+							var cmc = cmap[c];
+							if (cmc == null) {
+								cmap[c] = cmc = plte.length;
+								plte.push(c);
+								if (plte.length >= 300) break;
+							}
+							ind[i] = cmc;
 						}
-						ind[i] = cmc;
 					}
 				}
+			}else if (frms.length==1){
+
 			}
-			//console.log("make palette", Date.now()-time);  time = Date.now();
 		}
 
 		var cc = plte.length; //console.log("colors:",cc);

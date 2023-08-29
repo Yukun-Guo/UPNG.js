@@ -1,6 +1,6 @@
 const fs = require('fs');
-// const UPNG = require('./UPNG.js');
-const UPNG = require('upng-js');
+const UPNG = require('./UPNG.js');
+// const UPNG = require('upng-js');
 const PNG = require('pngjs').PNG;
 
 
@@ -38,7 +38,8 @@ const data = fs.readFileSync("wfdr.png");
 let png = UPNG.decode(data);
 let pngJS = PNG.sync.read(data);
 let pngJSData = decodeColorCodedImage(pngJS.data, pngJS.palette);
-console.log("png", png.tabs.PLTE.length);
-console.log("pngJS", pngJS.palette[4]);
+console.log("png", png.data);
+console.log("pngJS", pngJS.data);
 
-let encoded = UPNG.encode([pngJSData.buffer], pngJS.width, pngJS.height, 8, pngJS.palette);
+let encoded = UPNG.encode([Uint8Array.from(pngJS.data).buffer], pngJS.width, pngJS.height, 0);
+fs.writeFileSync("wfdr2.png", new Uint8Array(encoded));
