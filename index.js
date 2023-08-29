@@ -89,7 +89,7 @@ var UPNG = (function () {
 
 			frms.push(img.buffer.slice(0));
 
-			if (frm.dispose == 0) {} else if (frm.dispose == 1) _copyTile(empty, fw, fh, img, w, h, fx, fy, 0);
+			if (frm.dispose == 0) { } else if (frm.dispose == 1) _copyTile(empty, fw, fh, img, w, h, fx, fy, 0);
 			else if (frm.dispose == 2)
 				for (var j = 0; j < len; j++) img[j] = prev[j];
 		}
@@ -273,8 +273,6 @@ var UPNG = (function () {
 		//console.log(Date.now()-time);
 		return bf;
 	}
-
-
 
 	function decode(buff) {
 		var data = new Uint8Array(buff),
@@ -532,7 +530,7 @@ var UPNG = (function () {
 				var i = o[r] << j - o[r + 1];
 				o[r] = I[i] >>> A
 			}
-		}(function () {
+		} (function () {
 			var o = 1 << 15;
 			for (var j = 0; j < o; j++) {
 				var I = j;
@@ -1048,7 +1046,7 @@ var UPNG = (function () {
 		/*
 		var S=2, M = [
 			0,2,
-		    3,1];  //*/
+			3,1];  //*/
 		//*
 		var S = 4,
 			M = [
@@ -1099,11 +1097,11 @@ var UPNG = (function () {
 	}
 
 
-	function encode(bufs, w, h, ps, dels, tabs, forbidPlte) {
+	function encode(bufs, w, h, plte, ps, dels, tabs, forbidPlte) {
 		if (ps == null) ps = 0;
 		if (forbidPlte == null) forbidPlte = false;
 
-		var nimg = compress(bufs, w, h, ps, [false, false, false, 0, forbidPlte, false]);
+		var nimg = compress(bufs, w, h, plte, ps, [false, false, false, 0, forbidPlte, false]);
 		compressPNG(nimg, -1);
 
 		return _main(nimg, w, h, dels, tabs);
@@ -1116,7 +1114,7 @@ var UPNG = (function () {
 			frames: []
 		};
 
-		var time = Date.now();
+		// var time = Date.now();
 		var bipp = (cc + ac) * depth,
 			bipl = bipp * w;
 		for (var i = 0; i < bufs.length; i++)
@@ -1350,8 +1348,6 @@ var UPNG = (function () {
 		}
 	}
 
-
-
 	function compress(bufs, w, h, palette, ps, prms) // prms:  onlyBlend, minBits, forbidPlte
 	{
 		//var time = Date.now();
@@ -1373,8 +1369,6 @@ var UPNG = (function () {
 		}
 		var gotAlpha = (alphaAnd != 255);
 
-		//console.log("alpha check", Date.now()-time);  time = Date.now();
-
 		//var brute = gotAlpha && forGIF;		// brute : frames can only be copied, not "blended"
 		var frms = framize(bufs, w, h, onlyBlend, evenCrd, forbidPrev);
 		//console.log("framize", Date.now()-time);  time = Date.now();
@@ -1382,12 +1376,6 @@ var UPNG = (function () {
 		var cmap = {},
 			plte = [],
 			inds = [];
-		
-		if (palette !== null) {
-			for(let i = 0; i < palette.length; i++) {
-				plte.push(new Uint32Array(palette[i])[0]);
-			}
-		}
 
 		if (ps != 0) {
 			var nbufs = [];
@@ -1416,16 +1404,16 @@ var UPNG = (function () {
 
 			//console.log("quantize", Date.now()-time);  time = Date.now();
 		} else {
-			if (frms.length>1){
-				// what if ps==0, but there are <=256 colors?  we still need to detect, if the palette could be used
-				for (var j = 0; j < frms.length; j++) { // when not quantized, other frames can contain colors, that are not in an initial frame
-					var frm = frms[j],
-						img32 = new Uint32Array(frm.img.buffer),
-						nw = frm.rect.width,
-						ilen = img32.length;
-					var ind = new Uint8Array(ilen);
-					inds.push(ind);
-					// calc palette and reduce colors, if the palette is assigned by the user skip it
+			// what if ps==0, but there are <=256 colors?  we still need to detect, if the palette could be used
+			for (var j = 0; j < frms.length; j++) { // when not quantized, other frames can contain colors, that are not in an initial frame
+				var frm = frms[j],
+					img32 = new Uint32Array(frm.img.buffer),
+					nw = frm.rect.width,
+					ilen = img32.length;
+				var ind = new Uint8Array(ilen);
+				
+				// calc palette and reduce colors, if the palette is assigned by the user skip it
+				if (palette === null) {
 					for (var i = 0; i < ilen; i++) {
 						var c = img32[i];
 						if (i != 0 && c == img32[i - 1]) ind[i] = ind[i - 1];
@@ -1440,10 +1428,18 @@ var UPNG = (function () {
 							ind[i] = cmc;
 						}
 					}
+				}else{ // use user palette
+					for (let i = 0; i < palette.length; i++) {
+						// convert uint8 array to uint32
+						plte.push((new Uint32Array((new Uint8Array(palette[i])).buffer))[0]);
+					}
+					for (var i = 0; i < ilen; i++) {
+						ind[i] = Math.max(0,plte.indexOf(img32[i])); // set undefined colors to 0
+					}
 				}
-			}else if (frms.length==1){
-
+				inds.push(ind);
 			}
+		
 		}
 
 		var cc = plte.length; //console.log("colors:",cc);
@@ -1656,7 +1652,7 @@ var UPNG = (function () {
 				var j = cy * w + cx,
 					cc = cimg32[j];
 				// no need to draw transparency, or to dispose it. Or, if writing the same color and the next one does not need transparency.
-				if (cc == 0 || (frms[i - 1].dispose == 0 && pimg32[j] == cc && (nimg == null || nimg[j * 4 + 3] != 0)) /**/ ) {} else {
+				if (cc == 0 || (frms[i - 1].dispose == 0 && pimg32[j] == cc && (nimg == null || nimg[j * 4 + 3] != 0)) /**/) { } else {
 					if (cx < mix) mix = cx;
 					if (cx > max) max = cx;
 					if (cy < miy) miy = cy;
