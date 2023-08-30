@@ -19,8 +19,10 @@ function applyColormap(inputPixels, colormapLUT ) {
     return outputPixelsRGB;
 }
 
-const data = fs.readFileSync("test.png");
+const data = fs.readFileSync("testmt.png");
 let pngJS = PNG.sync.read(data);
+let pngU = UPNG.decode(data);
+
 // validation
 let encoded_v = UPNG.encode([Uint8Array.from(pngJS.data).buffer], pngJS.width, pngJS.height,pngJS.palette);
 

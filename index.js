@@ -1457,8 +1457,7 @@ var UPNG = (function () {
 				ny = frm.rect.y,
 				nw = frm.rect.width,
 				nh = frm.rect.height;
-			var cimg = frm.img,
-				cimg32 = new Uint32Array(cimg.buffer);
+			var cimg = frm.img;
 			var bpl = 4 * nw,
 				bpp = 4;
 			if (cc <= 256 && forbidPlte == false) {
