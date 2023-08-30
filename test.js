@@ -1,13 +1,9 @@
 const fs = require('fs');
 const UPNG = require('./index');
-// const UPNG = require('upng-js');
-import {encoder} from "./pngEncoder"
 const PNG = require('pngjs').PNG;
-
-const data = fs.readFileSync("_4ffc9_mask.png");
-
-let png = UPNG.decode(data);
+// test
+const data = fs.readFileSync("test.png");
 let pngJS = PNG.sync.read(data);
-
-let encoded = encoder([Uint8Array.from(pngJS.data).buffer], pngJS.width, pngJS.height,pngJS.palette);
-fs.writeFileSync("wfdr2.png", encoded);
+// validation
+let encoded_v = UPNG.encode([Uint8Array.from(pngJS.data).buffer], pngJS.width, pngJS.height,pngJS.palette);
+fs.writeFileSync("validation_out.png", encoded_v);

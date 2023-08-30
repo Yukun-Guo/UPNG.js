@@ -1,58 +1,51 @@
 import pako from 'pako';
 import fs from 'fs';
-import  {PNG} from 'pngjs'; 
-
-let crcLib = {
+const PNG = require('pngjs').PNG;
+const crcLib = {
     table: (function () {
-        var tab = new Uint32Array(256);
-        for (var n = 0; n < 256; n++) {
-            var c = n;
-            for (var k = 0; k < 8; k++) {
+        let tab = new Uint32Array(256);
+        for (let n = 0; n < 256; n++) {
+            let c = n;
+            for (let k = 0; k < 8; k++) {
+                // sourcery skip: possible-incorrect-bitwise-operator
                 if (c & 1) {
-                  c = 0xedb88320 ^ (c >>> 1);
+                    c = 0xedb88320 ^ (c >>> 1);
                 } else {
-                  c >>>= 1;
+                    c >>>= 1;
                 }
             }
             tab[n] = c;
         }
         return tab;
     })(),
-    update: function (c:any, buf:any, off:any, len:any) {
-        for (var i = 0; i < len; i++) c = crcLib.table[(c ^ buf[off + i]) & 0xff] ^ (c >>> 8);
+    update: function (c: any, buf: any, off: any, len: any) {
+        for (let i = 0; i < len; i++) {c = crcLib.table[(c ^ buf[off + i]) & 0xff] ^ (c >>> 8);}
         return c;
     },
-    crc: function (b:any, o:any, l:any) {
+    crc: function (b: any, o: any, l: any) {
         return crcLib.update(0xffffffff, b, o, l) ^ 0xffffffff;
     }
-}
+};
 
-function writeUshort(buff:any, p:number, n:number) {
-    buff[p] = (n >> 8) & 255;
-    buff[p + 1] = n & 255;
-}
-function readUint(buff:any, p:number) {
-    return (buff[p] * (256 * 256 * 256)) + ((buff[p + 1] << 16) | (buff[p + 2] << 8) | buff[p + 3]);
-}
-function writeUint (buff:any, p:number, n:number) {
+function writeUint(buff: any, p: number, n: number) {
     buff[p] = (n >> 24) & 255;
     buff[p + 1] = (n >> 16) & 255;
     buff[p + 2] = (n >> 8) & 255;
     buff[p + 3] = n & 255;
 }
 
-function compress(buffers: any, w: number, h: number, palette: any) {
+function compress(buffer: any, w: number, h: number, palette?: any) {
     //var time = Date.now();
     let ctype = 6;
     let depth = 8;
-    let alphaAnd = 255
+    let alphaAnd = 255;
 
     // when not quantized, other frames can contain colors, that are not in an initial frame
-    let img = new Uint8Array(buffers);
+    let img = new Uint8Array(buffer);
     for (let i = 0; i < img.length; i += 4) {
-        alphaAnd &= img[i + 3]
+        alphaAnd &= img[i + 3];
     };
-    let gotAlpha = (alphaAnd != 255);
+    let gotAlpha = (alphaAnd !== 255);
 
     let frm: any = {
         rect: {
@@ -61,7 +54,7 @@ function compress(buffers: any, w: number, h: number, palette: any) {
             width: w,
             height: h
         },
-        img: buffers,
+        img: buffer,
         blend: 0,
         dispose: 0
     };
@@ -70,7 +63,7 @@ function compress(buffers: any, w: number, h: number, palette: any) {
     let _palette: any = [];
     let inds: any = [];
 
-    let img32 = new Uint32Array(buffers);
+    let img32 = new Uint32Array(buffer);
     let nx = 0;
     let ny = 0;
     let nh = h;
@@ -78,16 +71,16 @@ function compress(buffers: any, w: number, h: number, palette: any) {
     let ind = new Uint8Array(img32.length);
 
     // calc palette and reduce colors, if the palette is assigned by the user skip it
-    if (palette === null) {
+    if (palette === undefined) {
         for (let i = 0; i < img32.length; i++) {
             let c = img32[i];
-            if (i != 0 && c == img32[i - 1]) {
+            if (i !== 0 && c === img32[i - 1]) {
                 ind[i] = ind[i - 1];
-            } else if (i > w && c == img32[i - w]) {
+            } else if (i > w && c === img32[i - w]) {
                 ind[i] = ind[i - w];
             } else {
                 let cmc = _colormap[c];
-                if (cmc == null) {
+                if (cmc === undefined) {
                     _colormap[c] = cmc = _palette.length;
                     _palette.push(c);
                     if (_palette.length >= 300) { break; }
@@ -101,6 +94,7 @@ function compress(buffers: any, w: number, h: number, palette: any) {
             _palette.push((new Uint32Array((new Uint8Array(palette[i])).buffer))[0]);
         }
         for (var i = 0; i < img32.length; i++) {
+            let c = _palette.indexOf(img32[i]);
             ind[i] = Math.max(0, _palette.indexOf(img32[i])); // set undefined colors to 0
         }
     }
@@ -130,20 +124,20 @@ function compress(buffers: any, w: number, h: number, palette: any) {
         for (let y = 0; y < nh; y++) {
             let i = y * bpl;
             let ii = y * nw;
-            if (depth == 8) {
-                for (var x = 0; x < nw; x++) nimg[i + (x)] = (inj[ii + x]);
-            } else if (depth == 4) {
-                for (var x = 0; x < nw; x++) nimg[i + (x >> 1)] |= (inj[ii + x] << (4 - (x & 1) * 4));
-            } else if (depth == 2) {
-                for (var x = 0; x < nw; x++) nimg[i + (x >> 2)] |= (inj[ii + x] << (6 - (x & 3) * 2));
-            } else if (depth == 1) {
-                for (var x = 0; x < nw; x++) nimg[i + (x >> 3)] |= (inj[ii + x] << (7 - (x & 7) * 1));
+            if (depth === 8) {
+                for (var x = 0; x < nw; x++) {nimg[i + (x)] = (inj[ii + x]);}
+            } else if (depth === 4) {
+                for (var x = 0; x < nw; x++) {nimg[i + (x >> 1)] |= (inj[ii + x] << (4 - (x & 1) * 4));}
+            } else if (depth === 2) {
+                for (var x = 0; x < nw; x++) {nimg[i + (x >> 2)] |= (inj[ii + x] << (6 - (x & 3) * 2));}
+            } else if (depth === 1) {
+                for (var x = 0; x < nw; x++) {nimg[i + (x >> 3)] |= (inj[ii + x] << (7 - (x & 7) * 1));}
             }
         }
         cimg = nimg;
         ctype = 3;
         bpp = 1;
-    } else if (gotAlpha == false) { // some next "reduced" frames may contain alpha for blending
+    } else if (gotAlpha === false) { // some next "reduced" frames may contain alpha for blending
         let nimg = new Uint8Array(nw * nh * 3);
         let area = nw * nh;
         for (let i = 0; i < area; i++) {
@@ -167,44 +161,50 @@ function compress(buffers: any, w: number, h: number, palette: any) {
         ctype: ctype,
         depth: depth,
         _palette: _palette,
-        frames: frm
+        frame: frm
     };
 }
 
-function writeASCII(data: any, p:number, s:any) {
-    for (var i = 0; i < s.length; i++) data[p + i] = s.charCodeAt(i);
+function writeASCII(data: any, p: number, s: any) {
+    for (var i = 0; i < s.length; i++) {data[p + i] = s.charCodeAt(i);}
 }
 
 function compressPNG(out: any, filter: any) {
-    for (let i = 0; i < out.frames.length; i++) {
-        let frm = out.frames[i];
-        let nw = frm.rect.width;
-        let nh = frm.rect.height;
-        let fdata = new Uint8Array(nh * frm.bpl + nh);
-        frm.cimg = _filterZero(frm.img, nh, frm.bpp, frm.bpl, fdata, filter);
-    }
+    let frm = out.frame;
+    let nw = frm.rect.width;
+    let nh = frm.rect.height;
+    let fdata = new Uint8Array(nh * frm.bpl + nh);
+    frm.cimg = _filterZero(frm.img, nh, frm.bpp, frm.bpl, fdata, filter);
+    // for (let i = 0; i < out.frames.length; i++) {
+    //     let frm = out.frames[i];
+    //     let nw = frm.rect.width;
+    //     let nh = frm.rect.height;
+    //     let fdata = new Uint8Array(nh * frm.bpl + nh);
+    //     frm.cimg = _filterZero(frm.img, nh, frm.bpp, frm.bpl, fdata, filter);
+    // }
 }
 
-function _filterZero(img:any, h:number, bpp:number, bpl:number, data:any, filter:any) {
-    let fls:any = [];
+function _filterZero(img: any, h: number, bpp: number, bpl: number, data: any, filter: any) {
+    let fls: any = [];
     let ftry = [0, 1, 2, 3, 4];
-    if (filter != -1) {
-      ftry = [filter];
-    } else if (h * bpl > 500000 || bpp == 1) {
-             ftry = [0];
-           }
-
-    for (var i = 0; i < ftry.length; i++) {
-        for (var y = 0; y < h; y++) _filterLine(data, img, y, bpl, bpp, ftry[i]);
-        fls.push(pako.deflate(data,{level: 0 }));
+    if (filter !== -1) {
+        ftry = [filter];
+    } else if (h * bpl > 500000 || bpp === 1) {
+        ftry = [0];
     }
 
-    var ti, tsize = 1e9;
-    for (var i = 0; i < fls.length; i++)
-        if (fls[i].length < tsize) {
+    for (let i = 0; i < ftry.length; i++) {
+        for (let y = 0; y < h; y++) {_filterLine(data, img, y, bpl, bpp, ftry[i]);}
+        fls.push(pako.deflate(data));
+    }
+
+    let ti: number = 0;
+    let tsize: number = 1e9;
+    for (let i = 0; i < fls.length; i++)
+        {if (fls[i].length < tsize) {
             ti = i;
             tsize = fls[i].length;
-        }
+        }}
     return fls[ti];
 }
 
@@ -226,84 +226,81 @@ function _paeth(a: number, b: number, c: number) {
     return c;
 }
 
-function _filterLine(data:any, img:any, y:number, bpl:number, bpp:number, type:number) {
+function _filterLine(data: any, img: any, y: number, bpl: number, bpp: number, type: number) {
     var i = y * bpl,
         di = i + y;
     data[di] = type;
     di++;
 
-    if (type == 0) {
+    if (type === 0) {
         if (bpl < 500) {
-          for (var x = 0; x < bpl; x++) data[di + x] = img[i + x];
+            for (var x = 0; x < bpl; x++) {data[di + x] = img[i + x];}
         } else {
-          data.set(new Uint8Array(img.buffer, i, bpl), di);
+            data.set(new Uint8Array(img.buffer, i, bpl), di);
         }
-    } else if (type == 1) {
-        for (var x = 0; x < bpp; x++) data[di + x] = img[i + x];
-        for (var x = bpp; x < bpl; x++) data[di + x] = (img[i + x] - img[i + x - bpp] + 256) & 255;
-    } else if (y == 0) {
-        for (var x = 0; x < bpp; x++) data[di + x] = img[i + x];
+    } else if (type === 1) {
+        for (var x = 0; x < bpp; x++) {data[di + x] = img[i + x];}
+        for (var x = bpp; x < bpl; x++) {data[di + x] = (img[i + x] - img[i + x - bpp] + 256) & 255;}
+    } else if (y === 0) {
+        for (var x = 0; x < bpp; x++) {data[di + x] = img[i + x];}
 
-        if (type == 2) {
-          for (var x = bpp; x < bpl; x++) data[di + x] = img[i + x];
+        if (type === 2) {
+            for (var x = bpp; x < bpl; x++) {data[di + x] = img[i + x];}
         }
-        if (type == 3) {
-          for (var x = bpp; x < bpl; x++) data[di + x] = (img[i + x] - (img[i + x - bpp] >> 1) + 256) & 255;
+        if (type === 3) {
+            for (var x = bpp; x < bpl; x++) {data[di + x] = (img[i + x] - (img[i + x - bpp] >> 1) + 256) & 255;}
         }
-        if (type == 4) {
-          for (var x = bpp; x < bpl; x++) data[di + x] = (img[i + x] - _paeth(img[i + x - bpp], 0, 0) + 256) & 255;
+        if (type === 4) {
+            for (var x = bpp; x < bpl; x++) {data[di + x] = (img[i + x] - _paeth(img[i + x - bpp], 0, 0) + 256) & 255;}
         }
     } else {
-        if (type == 2) {
-            for (var x = 0; x < bpl; x++) data[di + x] = (img[i + x] + 256 - img[i + x - bpl]) & 255;
+        if (type === 2) {
+            for (var x = 0; x < bpl; x++) {data[di + x] = (img[i + x] + 256 - img[i + x - bpl]) & 255;}
         }
-        if (type == 3) {
-            for (var x = 0; x < bpp; x++) data[di + x] = (img[i + x] + 256 - (img[i + x - bpl] >> 1)) & 255;
-            for (var x = bpp; x < bpl; x++) data[di + x] = (img[i + x] + 256 - ((img[i + x - bpl] + img[i + x - bpp]) >> 1)) & 255;
+        if (type === 3) {
+            for (var x = 0; x < bpp; x++) {data[di + x] = (img[i + x] + 256 - (img[i + x - bpl] >> 1)) & 255;}
+            for (var x = bpp; x < bpl; x++) {data[di + x] = (img[i + x] + 256 - ((img[i + x - bpl] + img[i + x - bpp]) >> 1)) & 255;}
         }
-        if (type == 4) {
-            for (var x = 0; x < bpp; x++) data[di + x] = (img[i + x] + 256 - _paeth(0, img[i + x - bpl], 0)) & 255;
-            for (var x = bpp; x < bpl; x++) data[di + x] = (img[i + x] + 256 - _paeth(img[i + x - bpp], img[i + x - bpl], img[i + x - bpp - bpl])) & 255;
+        if (type === 4) {
+            for (var x = 0; x < bpp; x++) {data[di + x] = (img[i + x] + 256 - _paeth(0, img[i + x - bpl], 0)) & 255;}
+            for (var x = bpp; x < bpl; x++) {data[di + x] = (img[i + x] + 256 - _paeth(img[i + x - bpp], img[i + x - bpl], img[i + x - bpp - bpl])) & 255;}
         }
     }
 }
 
-function _main(nimg, w, h, dels, tabs) {
-    if (tabs == null) tabs = {};
-    var crc = crcLib.crc,
-        wUi =writeUint,
-        wUs = writeUshort,
-        wAs = writeASCII;
-    var offset = 8,
-        anim = nimg.frames.length > 1,
-        pltAlpha = false;
+function _main(nimg: any, w: number, h: number) {
+    let tabs: any = {};
+    let { crc } = crcLib;
+    let wUi = writeUint;
+    let wAs = writeASCII;
+    let offset = 8;
+    let pltAlpha = false;
+    let cicc: any = null;
+    let leng = 8 + (16 + 5 + 4);
 
-    var cicc;
-
-    var leng = 8 + (16 + 5 + 4) /*+ (9+4)*/ + (anim ? 20 : 0);
-    if (tabs["sRGB"] != null) leng += 8 + 1 + 4;
-    if (tabs["pHYs"] != null) leng += 8 + 9 + 4;
-    if (tabs["iCCP"] != null) {
+    if (tabs["sRGB"] !== undefined) {
+        leng += 8 + 1 + 4;
+    }
+    if (tabs["pHYs"] !== undefined) {
+        leng += 8 + 9 + 4;
+    }
+    if (tabs["iCCP"] !== undefined) {
         cicc = pako.deflate(tabs["iCCP"]);
         leng += 8 + 11 + 2 + cicc.length + 4;
     }
-    if (nimg.ctype == 3) {
-        var dl = nimg.plte.length;
-        for (var i = 0; i < dl; i++)
-            if ((nimg.plte[i] >>> 24) != 255) pltAlpha = true;
+    if (nimg.ctype === 3) {
+        let dl = nimg._palette?.length;
+        for (let i = 0; i < dl; i++)
+            {if ((nimg._palette[i] >>> 24) !== 255) {
+                pltAlpha = true;
+            }}
         leng += (8 + dl * 3 + 4) + (pltAlpha ? (8 + dl * 1 + 4) : 0);
     }
-    for (var j = 0; j < nimg.frames.length; j++) {
-        var fr = nimg.frames[j];
-        if (anim) leng += 38;
-        leng += fr.cimg.length + 12;
-        if (j != 0) leng += 4;
-    }
-    leng += 12;
+    leng += nimg.frame.cimg.length + 12 + 12;
 
     var data = new Uint8Array(leng);
     var wr = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
-    for (var i = 0; i < 8; i++) data[i] = wr[i];
+    for (var i = 0; i < 8; i++) {data[i] = wr[i];}
 
     wUi(data, offset, 13);
     offset += 4;
@@ -327,7 +324,7 @@ function _main(nimg, w, h, dels, tabs) {
     offset += 4; // crc
 
     // 13 bytes to say, that it is sRGB
-    if (tabs["sRGB"] != null) {
+    if (tabs["sRGB"] !== undefined) {
         wUi(data, offset, 1);
         offset += 4;
         wAs(data, offset, "sRGB");
@@ -337,8 +334,8 @@ function _main(nimg, w, h, dels, tabs) {
         wUi(data, offset, crc(data, offset - 5, 5));
         offset += 4; // crc
     }
-    if (tabs["iCCP"] != null) {
-        var sl = 11 + 2 + cicc.length;
+    if (tabs["iCCP"] !== undefined) {
+        let sl = 11 + 2 + cicc.length;
         wUi(data, offset, sl);
         offset += 4;
         wAs(data, offset, "iCCP");
@@ -351,7 +348,7 @@ function _main(nimg, w, h, dels, tabs) {
         wUi(data, offset, crc(data, offset - (sl + 4), sl + 4));
         offset += 4; // crc
     }
-    if (tabs["pHYs"] != null) {
+    if (tabs["pHYs"] !== undefined) {
         wUi(data, offset, 9);
         offset += 4;
         wAs(data, offset, "pHYs");
@@ -366,28 +363,15 @@ function _main(nimg, w, h, dels, tabs) {
         offset += 4; // crc
     }
 
-    if (anim) {
-        wUi(data, offset, 8);
-        offset += 4;
-        wAs(data, offset, "acTL");
-        offset += 4;
-        wUi(data, offset, nimg.frames.length);
-        offset += 4;
-        wUi(data, offset, tabs["loop"] != null ? tabs["loop"] : 0);
-        offset += 4;
-        wUi(data, offset, crc(data, offset - 12, 12));
-        offset += 4; // crc
-    }
-
-    if (nimg.ctype == 3) {
-        var dl = nimg.plte.length;
+    if (nimg.ctype === 3) {
+        let dl = nimg._palette?.length;
         wUi(data, offset, dl * 3);
         offset += 4;
         wAs(data, offset, "PLTE");
         offset += 4;
-        for (var i = 0; i < dl; i++) {
-            var ti = i * 3,
-                c = nimg.plte[i],
+        for (let i = 0; i < dl; i++) {
+            let ti = i * 3,
+                c = nimg._palette[i],
                 r = (c) & 255,
                 g = (c >>> 8) & 255,
                 b = (c >>> 16) & 255;
@@ -404,59 +388,21 @@ function _main(nimg, w, h, dels, tabs) {
             offset += 4;
             wAs(data, offset, "tRNS");
             offset += 4;
-            for (var i = 0; i < dl; i++) data[offset + i] = (nimg.plte[i] >>> 24) & 255;
+            for (let i = 0; i < dl; i++) {data[offset + i] = (nimg._palette[i] >>> 24) & 255;}
             offset += dl;
             wUi(data, offset, crc(data, offset - dl - 4, dl + 4));
             offset += 4; // crc
         }
     }
-
-    var fi = 0;
-    for (var j = 0; j < nimg.frames.length; j++) {
-        var fr = nimg.frames[j];
-        if (anim) {
-            wUi(data, offset, 26);
-            offset += 4;
-            wAs(data, offset, "fcTL");
-            offset += 4;
-            wUi(data, offset, fi++);
-            offset += 4;
-            wUi(data, offset, fr.rect.width);
-            offset += 4;
-            wUi(data, offset, fr.rect.height);
-            offset += 4;
-            wUi(data, offset, fr.rect.x);
-            offset += 4;
-            wUi(data, offset, fr.rect.y);
-            offset += 4;
-            wUs(data, offset, dels[j]);
-            offset += 2;
-            wUs(data, offset, 1000);
-            offset += 2;
-            data[offset] = fr.dispose;
-            offset++; // dispose
-            data[offset] = fr.blend;
-            offset++; // blend
-            wUi(data, offset, crc(data, offset - 30, 30));
-            offset += 4; // crc
-        }
-
-        var imgd = fr.cimg,
-            dl = imgd.length;
-        wUi(data, offset, dl + (j == 0 ? 0 : 4));
-        offset += 4;
-        var ioff = offset;
-        wAs(data, offset, (j == 0) ? "IDAT" : "fdAT");
-        offset += 4;
-        if (j != 0) {
-            wUi(data, offset, fi++);
-            offset += 4;
-        }
-        data.set(imgd, offset);
-        offset += dl;
-        wUi(data, offset, crc(data, ioff, offset - ioff));
-        offset += 4; // crc
-    }
+    wUi(data, offset, nimg.frame.cimg.length);
+    offset += 4;
+    wAs(data, offset, "IDAT");
+    offset += 4;
+    data.set(nimg.frame.cimg, offset);
+    offset += nimg.frame.cimg.length;
+    wUi(data, offset, crc(data, offset, 0));
+    offset += 4; // crc
+    // }
 
     wUi(data, offset, 0);
     offset += 4;
@@ -468,26 +414,13 @@ function _main(nimg, w, h, dels, tabs) {
     return data;
 }
 
-function encode(buffers: any, w: number, h: number, palette: any, ps?: number, dels?: any, tabs?: any) {
-    let nimg = compress(buffers, w, h, palette);
+export function encode(buffer: any, w: number, h: number, palette?: any) {
+    let nimg = compress(buffer, w, h, palette);
     compressPNG(nimg, -1);
-    return _main(nimg, w, h, dels, tabs);
+    return _main(nimg, w, h);
 }
-
-// export default {
-//     encode
-// }
-
-
-// const UPNG = require('./index');
-// const UPNG = require('upng-js');
-// import {encoder} from "./pngEncoder"
-// const PNG = require('pngjs').PNG;
-
-const data = fs.readFileSync("_4ffc9_mask.png");
-
-// let png = UPNG.decode(data);
+// // test
+const data = fs.readFileSync("test.png");
 let pngJS = PNG.sync.read(data);
-
-let encoded = encode(Uint8Array.from(pngJS.data).buffer, pngJS.width, pngJS.height,pngJS.palette);
-fs.writeFileSync("wfdr2.png", encoded);
+let encoded = encode(Uint8Array.from(pngJS.data).buffer, pngJS.width, pngJS.height, pngJS.palette);
+fs.writeFileSync("test_out.png", encoded);
