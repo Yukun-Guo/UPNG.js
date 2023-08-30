@@ -414,6 +414,78 @@ function _main(nimg: any, w: number, h: number) {
     return data;
 }
 
+
+function quantize(abuf:any, ps, doKmeans) {
+    var time = Date.now();
+    var sb = new Uint8Array(abuf),
+        tb = sb.slice(0),
+        tb32 = new Uint32Array(tb.buffer);
+
+    var KD = getKDtree(tb, ps);
+    var root = KD[0],
+        leafs = KD[1],
+        K = leafs.length;
+
+    //console.log(Date.now()-time, "tree made");  time = Date.now();
+
+    var cl32 = new Uint32Array(K),
+        clr8 = new Uint8Array(cl32.buffer);
+    for (var i = 0; i < K; i++) cl32[i] = leafs[i].est.rgba;
+
+    var len = sb.length;
+
+    var inds = new Uint8Array(len >> 2),
+        nd;
+    if (K <= 60) {
+        findNearest(sb, inds, clr8);
+        remap(inds, tb32, cl32);
+    } else if (sb.length < 32e6) // precise, but slow :(
+        //for(var j=0; j<4; j++) 
+        for (var i = 0; i < len; i += 4) {
+            var r = sb[i] * (1 / 255),
+                g = sb[i + 1] * (1 / 255),
+                b = sb[i + 2] * (1 / 255),
+                a = sb[i + 3] * (1 / 255);
+
+            nd = getNearest(root, r, g, b, a);
+            inds[i >> 2] = nd.ind;
+            tb32[i >> 2] = nd.est.rgba;
+        }
+    else
+        for (var i = 0; i < len; i += 4) {
+            var r = sb[i] * (1 / 255),
+                g = sb[i + 1] * (1 / 255),
+                b = sb[i + 2] * (1 / 255),
+                a = sb[i + 3] * (1 / 255);
+
+            nd = root;
+            while (nd.left) nd = (planeDst(nd.est, r, g, b, a) <= 0) ? nd.left : nd.right;
+            inds[i >> 2] = nd.ind;
+            tb32[i >> 2] = nd.est.rgba;
+        }
+
+    //console.log(Date.now()-time, "nearest found");  time = Date.now();
+
+    if (doKmeans || sb.length * K < 10 * 4e6) {
+        var le = 1e9;
+        for (var i = 0; i < 10; i++) {
+            var ce = kmeans(sb, inds, clr8); //console.log(i,ce);
+            if (ce / le > 0.997) break;
+            le = ce;
+        }
+        for (var i = 0; i < K; i++) leafs[i].est.rgba = cl32[i];
+        remap(inds, tb32, cl32);
+        //console.log(Date.now()-time, "k-means");
+    }
+
+    return {
+        abuf: tb.buffer,
+        inds: inds,
+        plte: leafs
+    };
+}
+
+
 export function encode(buffer: any, w: number, h: number, palette?: any) {
     let nimg = compress(buffer, w, h, palette);
     compressPNG(nimg, -1);
